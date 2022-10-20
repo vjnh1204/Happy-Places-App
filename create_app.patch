@@ -1,0 +1,1008 @@
+Index: app/src/main/java/com/example/happyplacesapp/MainActivity.kt
+===================================================================
+diff --git a/app/src/main/java/com/example/happyplacesapp/MainActivity.kt b/app/src/main/java/com/example/happyplacesapp/MainActivity.kt
+deleted file mode 100644
+--- a/app/src/main/java/com/example/happyplacesapp/MainActivity.kt	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ /dev/null	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
+@@ -1,11 +0,0 @@
+-package com.example.happyplacesapp
+-
+-import androidx.appcompat.app.AppCompatActivity
+-import android.os.Bundle
+-
+-class MainActivity : AppCompatActivity() {
+-    override fun onCreate(savedInstanceState: Bundle?) {
+-        super.onCreate(savedInstanceState)
+-        setContentView(R.layout.activity_main)
+-    }
+-}
+\ No newline at end of file
+Index: app/src/main/res/values-night/themes.xml
+===================================================================
+diff --git a/app/src/main/res/values-night/themes.xml b/app/src/main/res/values-night/themes.xml
+deleted file mode 100644
+--- a/app/src/main/res/values-night/themes.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ /dev/null	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
+@@ -1,16 +0,0 @@
+-<resources xmlns:tools="http://schemas.android.com/tools">
+-    <!-- Base application theme. -->
+-    <style name="Theme.HappyPlacesApp" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+-        <!-- Primary brand color. -->
+-        <item name="colorPrimary">@color/purple_200</item>
+-        <item name="colorPrimaryVariant">@color/purple_700</item>
+-        <item name="colorOnPrimary">@color/black</item>
+-        <!-- Secondary brand color. -->
+-        <item name="colorSecondary">@color/teal_200</item>
+-        <item name="colorSecondaryVariant">@color/teal_200</item>
+-        <item name="colorOnSecondary">@color/black</item>
+-        <!-- Status bar color. -->
+-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+-        <!-- Customize your theme here. -->
+-    </style>
+-</resources>
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_action_add_24dp.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_action_add_24dp.xml b/app/src/main/res/drawable/ic_action_add_24dp.xml
+new file mode 100644
+--- /dev/null	(date 1666086862540)
++++ b/app/src/main/res/drawable/ic_action_add_24dp.xml	(date 1666086862540)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:tint="#FFFFFF"
++    android:viewportWidth="24.0"
++    android:viewportHeight="24.0">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/example/happyplacesapp/activity/AddHappyPlacesActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/happyplacesapp/activity/AddHappyPlacesActivity.kt b/app/src/main/java/com/example/happyplacesapp/activity/AddHappyPlacesActivity.kt
+new file mode 100644
+--- /dev/null	(date 1666172309753)
++++ b/app/src/main/java/com/example/happyplacesapp/activity/AddHappyPlacesActivity.kt	(date 1666172309753)
+@@ -0,0 +1,262 @@
++package com.example.happyplacesapp.activity
++
++import android.Manifest
++import android.app.AlertDialog
++import android.app.DatePickerDialog
++import android.content.ActivityNotFoundException
++import android.content.Context
++import android.content.ContextWrapper
++import android.content.Intent
++import android.graphics.Bitmap
++import android.net.Uri
++import android.os.Bundle
++import android.provider.MediaStore
++import android.provider.Settings
++import android.util.Log
++import android.view.View
++import android.widget.Toast
++import androidx.activity.result.ActivityResultLauncher
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.appcompat.app.AppCompatActivity
++import com.example.happyplacesapp.R
++import com.example.happyplacesapp.database.DatabaseHandler
++import com.example.happyplacesapp.database.Models.HappyPlaceModel
++import com.example.happyplacesapp.databinding.ActivityAddHappyPlacesBinding
++import com.karumi.dexter.Dexter
++import com.karumi.dexter.MultiplePermissionsReport
++import com.karumi.dexter.PermissionToken
++import com.karumi.dexter.listener.PermissionRequest
++import com.karumi.dexter.listener.multi.MultiplePermissionsListener
++import java.io.File
++import java.io.FileOutputStream
++import java.text.SimpleDateFormat
++import java.util.*
++
++class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
++
++    private var binding: ActivityAddHappyPlacesBinding? = null
++    private val cal = Calendar.getInstance()
++    private lateinit var dateSetPicker: DatePickerDialog.OnDateSetListener
++    private var saveImageToInternalStorage: Uri? = null
++    private var mLatitude: Double = 0.0
++    private var mLongitude: Double = 0.0
++    private var openGalleryLauncher: ActivityResultLauncher<Intent> =
++        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
++            if (result.resultCode == RESULT_OK && result.data != null) {
++                val thumbnail: Bitmap = result?.data?.extras!!.get("data") as Bitmap
++                saveImageToInternalStorage = saveImage(thumbnail)
++                binding?.ivPlaceImage?.setImageBitmap(thumbnail)
++            }
++        }
++    private var openCameraLauncher: ActivityResultLauncher<Intent> =
++        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
++            if (result.resultCode == RESULT_OK && result.data != null) {
++                val thumbnail: Bitmap = result?.data?.extras!!.get("data") as Bitmap
++                saveImageToInternalStorage = saveImage(thumbnail)
++                binding?.ivPlaceImage?.setImageBitmap(thumbnail)
++            }
++        }
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        binding = ActivityAddHappyPlacesBinding.inflate(layoutInflater)
++        setContentView(binding?.root)
++        setSupportActionBar(binding?.toolbarAddPlace)
++        if (supportActionBar != null) {
++            supportActionBar?.setDisplayHomeAsUpEnabled(true)
++        }
++        binding?.toolbarAddPlace?.setNavigationOnClickListener {
++            onBackPressed()
++        }
++        dateSetPicker = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
++            cal.set(Calendar.YEAR, year)
++            cal.set(Calendar.MONTH, month)
++            cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
++            updateDateInView()
++        }
++        updateDateInView()
++        binding?.etDate?.setOnClickListener(this)
++        binding?.tvAddImage?.setOnClickListener(this)
++        binding?.btnSave?.setOnClickListener(this)
++    }
++
++    override fun onClick(view: View?) {
++        when (view!!.id) {
++            R.id.et_date -> {
++                DatePickerDialog(
++                    this@AddHappyPlacesActivity,
++                    dateSetPicker,
++                    cal.get(Calendar.YEAR),
++                    cal.get(Calendar.MONTH),
++                    cal.get(Calendar.DAY_OF_MONTH)
++                ).show()
++            }
++            R.id.tv_add_image -> {
++                val pictureDialog = AlertDialog.Builder(this)
++                pictureDialog.setTitle("Select Action")
++                val pictureDialogItems =
++                    arrayOf("Select photo from gallery", "Capture photo from camera")
++                pictureDialog.setItems(pictureDialogItems) { _, which ->
++                    when (which) {
++                        0 -> choosePictureFromGallery()
++                        1 -> takePhotoFromCamera()
++                    }
++                }
++                pictureDialog.show()
++            }
++            R.id.btn_save -> {
++                when {
++                    binding?.etTitle?.text.isNullOrEmpty() -> {
++                        Toast.makeText(this, "Please enter title", Toast.LENGTH_SHORT).show()
++                    }
++                    binding?.etDescription?.text.isNullOrEmpty() -> {
++                        Toast.makeText(this, "Please enter description", Toast.LENGTH_SHORT)
++                            .show()
++                    }
++                    binding?.etLocation?.text.isNullOrEmpty() -> {
++                        Toast.makeText(this, "Please select location", Toast.LENGTH_SHORT)
++                            .show()
++                    }
++                    saveImageToInternalStorage == null -> {
++                        Toast.makeText(this, "Please add image", Toast.LENGTH_SHORT).show()
++                    }
++                    else -> {
++
++                        // Assigning all the values to data model class.
++                        val happyPlaceModel = HappyPlaceModel(
++                            0,
++                            binding?.etTitle?.text.toString(),
++                            saveImageToInternalStorage.toString(),
++                            binding?.etDescription?.text.toString(),
++                            binding?.etDate?.text.toString(),
++                            binding?.etLocation?.text.toString(),
++                            mLatitude,
++                            mLongitude
++                        )
++
++                        // Here we initialize the database handler class.
++                        val dbHandler = DatabaseHandler(this)
++
++                        val addHappyPlace = dbHandler.addHappyPlace(happyPlaceModel)
++
++                        if (addHappyPlace > 0) {
++                            Toast.makeText(
++                                this,
++                                "The happy place details are inserted successfully.",
++                                Toast.LENGTH_SHORT
++                            ).show()
++                            finish();//finishing activity
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    private fun saveImage(bitmap: Bitmap): Uri {
++        val wrapper = ContextWrapper(applicationContext)
++        var file = wrapper.getDir("image", Context.MODE_PRIVATE)
++        file = File(file, "${UUID.randomUUID()}.jpg")
++        try {
++            val fos = FileOutputStream(file)
++            bitmap.compress(Bitmap.CompressFormat.PNG, 90, fos)
++            fos.flush()
++            fos.close()
++        } catch (e: java.lang.Exception) {
++            e.printStackTrace()
++        }
++        Log.e("AAA", file.absolutePath)
++        return Uri.parse(file.absolutePath)
++    }
++
++    private fun takePhotoFromCamera() {
++        Dexter.withContext(this@AddHappyPlacesActivity).withPermissions(
++            Manifest.permission.READ_EXTERNAL_STORAGE,
++            Manifest.permission.WRITE_EXTERNAL_STORAGE,
++            Manifest.permission.CAMERA
++        ).withListener(object : MultiplePermissionsListener {
++            override fun onPermissionsChecked(p0: MultiplePermissionsReport?) {
++                if (p0!!.areAllPermissionsGranted()) {
++                    try {
++                        val pickIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
++                        openCameraLauncher.launch(pickIntent)
++                    } catch (e: java.lang.Exception) {
++                        e.printStackTrace()
++                    }
++
++                }
++            }
++
++            override fun onPermissionRationaleShouldBeShown(
++                p0: MutableList<PermissionRequest>?,
++                p1: PermissionToken?
++            ) {
++                showRationaleDialogForPermissions()
++            }
++
++
++        }).check()
++    }
++
++    private fun choosePictureFromGallery() {
++        Dexter.withContext(this@AddHappyPlacesActivity).withPermissions(
++            Manifest.permission.READ_EXTERNAL_STORAGE,
++            Manifest.permission.WRITE_EXTERNAL_STORAGE
++        ).withListener(object : MultiplePermissionsListener {
++            override fun onPermissionsChecked(p0: MultiplePermissionsReport?) {
++                if (p0!!.areAllPermissionsGranted()) {
++                    try {
++                        val pickIntent =
++                            Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
++                        openGalleryLauncher.launch(pickIntent)
++                    } catch (e: java.lang.Exception) {
++                        e.printStackTrace()
++                    }
++
++                }
++            }
++
++            override fun onPermissionRationaleShouldBeShown(
++                p0: MutableList<PermissionRequest>?,
++                p1: PermissionToken?
++            ) {
++                showRationaleDialogForPermissions()
++            }
++
++
++        }).check()
++    }
++
++    private fun showRationaleDialogForPermissions() {
++        AlertDialog.Builder(this).setMessage(
++            "" +
++                    "It looks like you have turned off permissions required" +
++                    "for this feature. It can be enable under the" +
++                    "Applications Settings. "
++        )
++            .setPositiveButton("GO TO SETTINGS.") { _, _ ->
++                try {
++                    val intent = Intent(
++                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
++                        Uri.parse("package:$packageName")
++                    )
++                    startActivity(intent)
++
++                } catch (e: ActivityNotFoundException) {
++                    e.printStackTrace()
++                }
++
++            }
++            .setNegativeButton("Cancel") { dialog, _ ->
++                dialog.dismiss()
++            }
++            .show()
++    }
++
++    private fun updateDateInView() {
++        val myFormat = "dd.MM.yyyy"
++        val simpleDateFormat = SimpleDateFormat(myFormat, Locale.getDefault())
++        binding?.etDate?.setText(simpleDateFormat.format(cal.time).toString())
++    }
++
++}
+\ No newline at end of file
+Index: app/src/main/res/values/themes.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/themes.xml b/app/src/main/res/values/themes.xml
+--- a/app/src/main/res/values/themes.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/src/main/res/values/themes.xml	(date 1666160270740)
+@@ -1,16 +1,21 @@
+ <resources xmlns:tools="http://schemas.android.com/tools">
+     <!-- Base application theme. -->
+-    <style name="Theme.HappyPlacesApp" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
++    <style name="Theme.HappyPlacesApp" parent="Theme.AppCompat.Light.DarkActionBar">
+         <!-- Primary brand color. -->
+         <item name="colorPrimary">@color/purple_500</item>
+-        <item name="colorPrimaryVariant">@color/purple_700</item>
+-        <item name="colorOnPrimary">@color/white</item>
+-        <!-- Secondary brand color. -->
+-        <item name="colorSecondary">@color/teal_200</item>
+-        <item name="colorSecondaryVariant">@color/teal_700</item>
+-        <item name="colorOnSecondary">@color/black</item>
+-        <!-- Status bar color. -->
+-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
++        <item name="colorPrimaryDark">@color/purple_700</item>
++        <item name="colorAccent">@color/blue</item>
+         <!-- Customize your theme here. -->
+     </style>
++
++    <style name="CustomNoActionBarTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
++        <item name="android:statusBarColor">@color/purple_700</item>
++    </style>
++
++
++    <style name="CustomToolbarStyle">
++        <item name="android:textColorPrimary">#FFFFFF</item>
++        <item name="android:colorControlNormal">#FFFFFF</item>
++    </style>
++
+ </resources>
+\ No newline at end of file
+Index: app/src/main/res/values/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+--- a/app/src/main/res/values/strings.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/src/main/res/values/strings.xml	(date 1666088832975)
+@@ -1,3 +1,9 @@
+ <resources>
+     <string name="app_name">HappyPlacesApp</string>
++    <string name="edit_text_hint_title">Title</string>
++    <string name="edit_text_hint_description">Description</string>
++    <string name="edit_text_hint_date">Date</string>
++    <string name="edit_text_hint_location">Location</string>
++    <string name="text_add_image">ADD IMAGE</string>
++    <string name="btn_text_save">SAVE</string>
+ </resources>
+\ No newline at end of file
+Index: .idea/gradle.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/gradle.xml b/.idea/gradle.xml
+--- a/.idea/gradle.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/.idea/gradle.xml	(date 1666159358184)
+@@ -1,5 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
++  <component name="GradleMigrationSettings" migrationVersion="1" />
+   <component name="GradleSettings">
+     <option name="linkedExternalProjectsSettings">
+       <GradleProjectSettings>
+Index: app/src/main/res/values/colors.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/colors.xml b/app/src/main/res/values/colors.xml
+--- a/app/src/main/res/values/colors.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/src/main/res/values/colors.xml	(date 1666088866296)
+@@ -1,10 +1,16 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <color name="purple_200">#FFBB86FC</color>
+-    <color name="purple_500">#FF6200EE</color>
+-    <color name="purple_700">#FF3700B3</color>
++    <color name="purple_500">#03396c</color>
++    <color name="purple_700">#011f4b</color>
+     <color name="teal_200">#FF03DAC5</color>
+     <color name="teal_700">#FF018786</color>
+     <color name="black">#FF000000</color>
+     <color name="white">#FFFFFFFF</color>
++    <color name="blue">#005b96</color>
++
++    <color name="primary_text_color">#212121</color>
++    <color name="secondary_text_color">#9AA2AF</color>
++    <color name="white_color">#FFFFFF</color>
++    <color name="button_background_color">#63ace5</color>
+ </resources>
+\ No newline at end of file
+Index: app/src/main/res/values/dimens.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
+new file mode 100644
+--- /dev/null	(date 1666088808120)
++++ b/app/src/main/res/values/dimens.xml	(date 1666088808120)
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <dimen name="fab_margin">16dp</dimen>
++    <dimen name="main_content_padding">16dp</dimen>
++    <dimen name="edit_text_text_size">16sp</dimen>
++    <dimen name="add_screen_til_marginTop">5dp</dimen>
++    <dimen name="add_screen_place_image_size">200dp</dimen>
++    <dimen name="add_screen_place_image_marginTop">15dp</dimen>
++    <dimen name="add_screen_place_image_padding">2dp</dimen>
++    <dimen name="add_screen_text_add_image_marginTop">96dp</dimen>
++    <dimen name="add_screen_text_add_image_padding">10dp</dimen>
++    <dimen name="add_screen_text_add_image_textSize">18sp</dimen>
++    <dimen name="add_screen_btn_save_marginTop">24dp</dimen>
++    <dimen name="add_screen_btn_save_paddingTopBottom">8dp</dimen>
++    <dimen name="btn_text_size">18sp</dimen>
++    <dimen name="image_border_stroke_size">0.5dp</dimen>
++    <dimen name="add_place_image_shape_radius">3dp</dimen>
++    <dimen name="button_radius">10dp</dimen>
++</resources>
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_main.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+--- a/app/src/main/res/layout/activity_main.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/src/main/res/layout/activity_main.xml	(date 1666170927916)
+@@ -1,18 +1,19 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     xmlns:tools="http://schemas.android.com/tools"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+-    tools:context=".MainActivity">
++    tools:context=".activity.MainActivity">
+ 
+-    <TextView
++    <!--Here the "fab_margin" is defined in the dimen.xml-->
++    <com.google.android.material.floatingactionbutton.FloatingActionButton
++        android:id="@+id/fabAddHappyPlace"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+-        android:text="Hello World!"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent" />
++        android:layout_gravity="bottom|end"
++        android:layout_margin="@dimen/fab_margin"
++        app:srcCompat="@drawable/ic_action_add_24dp"
++        android:contentDescription="aaa" />
+ 
+-</androidx.constraintlayout.widget.ConstraintLayout>
+\ No newline at end of file
++</FrameLayout>
+\ No newline at end of file
+Index: app/src/main/java/com/example/happyplacesapp/database/DatabaseHandler.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/happyplacesapp/database/DatabaseHandler.kt b/app/src/main/java/com/example/happyplacesapp/database/DatabaseHandler.kt
+new file mode 100644
+--- /dev/null	(date 1666173819120)
++++ b/app/src/main/java/com/example/happyplacesapp/database/DatabaseHandler.kt	(date 1666173819120)
+@@ -0,0 +1,108 @@
++package com.example.happyplacesapp.database
++
++import android.annotation.SuppressLint
++import android.content.ContentValues
++import android.content.Context
++import android.database.Cursor
++import android.database.sqlite.SQLiteDatabase
++import android.database.sqlite.SQLiteException
++import android.database.sqlite.SQLiteOpenHelper
++import com.example.happyplacesapp.database.Models.HappyPlaceModel
++
++class DatabaseHandler(context: Context) :
++    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
++
++    companion object {
++        private const val DATABASE_VERSION = 1 // Database version
++        private const val DATABASE_NAME = "HappyPlacesDatabase" // Database name
++        private const val TABLE_HAPPY_PLACE = "HappyPlacesTable" // Table Name
++
++        //All the Columns names
++        private const val KEY_ID = "_id"
++        private const val KEY_TITLE = "title"
++        private const val KEY_IMAGE = "image"
++        private const val KEY_DESCRIPTION = "description"
++        private const val KEY_DATE = "date"
++        private const val KEY_LOCATION = "location"
++        private const val KEY_LATITUDE = "latitude"
++        private const val KEY_LONGITUDE = "longitude"
++    }
++
++    override fun onCreate(db: SQLiteDatabase?) {
++        //creating table with fields
++        val CREATE_HAPPY_PLACE_TABLE = ("CREATE TABLE " + TABLE_HAPPY_PLACE + "("
++                + KEY_ID + " INTEGER PRIMARY KEY,"
++                + KEY_TITLE + " TEXT,"
++                + KEY_IMAGE + " TEXT,"
++                + KEY_DESCRIPTION + " TEXT,"
++                + KEY_DATE + " TEXT,"
++                + KEY_LOCATION + " TEXT,"
++                + KEY_LATITUDE + " TEXT,"
++                + KEY_LONGITUDE + " TEXT)")
++        db?.execSQL(CREATE_HAPPY_PLACE_TABLE)
++    }
++
++    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
++        db!!.execSQL("DROP TABLE IF EXISTS $TABLE_HAPPY_PLACE")
++        onCreate(db)
++    }
++
++    fun addHappyPlace(happyPlace: HappyPlaceModel): Long {
++        val db = this.writableDatabase
++
++        val contentValues = ContentValues()
++        contentValues.put(KEY_TITLE, happyPlace.title) // HappyPlaceModelClass TITLE
++        contentValues.put(KEY_IMAGE, happyPlace.image) // HappyPlaceModelClass IMAGE
++        contentValues.put(
++            KEY_DESCRIPTION,
++            happyPlace.description
++        ) // HappyPlaceModelClass DESCRIPTION
++        contentValues.put(KEY_DATE, happyPlace.date) // HappyPlaceModelClass DATE
++        contentValues.put(KEY_LOCATION, happyPlace.location) // HappyPlaceModelClass LOCATION
++        contentValues.put(KEY_LATITUDE, happyPlace.latitude) // HappyPlaceModelClass LATITUDE
++        contentValues.put(KEY_LONGITUDE, happyPlace.longitude) // HappyPlaceModelClass LONGITUDE
++
++        // Inserting Row
++        val result = db.insert(TABLE_HAPPY_PLACE, null, contentValues)
++        //2nd argument is String containing nullColumnHack
++
++        db.close() // Closing database connection
++        return result
++    }
++
++    @SuppressLint("Range")
++    fun getHappyPlacesList(): ArrayList<HappyPlaceModel> {
++
++        // A list is initialize using the data model class in which we will add the values from cursor.
++        val happyPlaceList: ArrayList<HappyPlaceModel> = ArrayList()
++
++        val selectQuery = "SELECT  * FROM $TABLE_HAPPY_PLACE" // Database select query
++
++        val db = this.readableDatabase
++
++        try {
++            val cursor: Cursor = db.rawQuery(selectQuery, null)
++            if (cursor.moveToFirst()) {
++                do {
++                    val place = HappyPlaceModel(
++                        cursor.getInt(cursor.getColumnIndex(KEY_ID)),
++                        cursor.getString(cursor.getColumnIndex(KEY_TITLE)),
++                        cursor.getString(cursor.getColumnIndex(KEY_IMAGE)),
++                        cursor.getString(cursor.getColumnIndex(KEY_DESCRIPTION)),
++                        cursor.getString(cursor.getColumnIndex(KEY_DATE)),
++                        cursor.getString(cursor.getColumnIndex(KEY_LOCATION)),
++                        cursor.getDouble(cursor.getColumnIndex(KEY_LATITUDE)),
++                        cursor.getDouble(cursor.getColumnIndex(KEY_LONGITUDE))
++                    )
++                    happyPlaceList.add(place)
++
++                } while (cursor.moveToNext())
++            }
++            cursor.close()
++        } catch (e: SQLiteException) {
++            db.execSQL(selectQuery)
++            return ArrayList()
++        }
++        return happyPlaceList
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/com/example/happyplacesapp/database/Models/HappyPlaceModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/happyplacesapp/database/Models/HappyPlaceModel.kt b/app/src/main/java/com/example/happyplacesapp/database/Models/HappyPlaceModel.kt
+new file mode 100644
+--- /dev/null	(date 1666171054331)
++++ b/app/src/main/java/com/example/happyplacesapp/database/Models/HappyPlaceModel.kt	(date 1666171054331)
+@@ -0,0 +1,14 @@
++package com.example.happyplacesapp.database.Models
++
++import android.media.Image
++
++data class HappyPlaceModel(
++    val id: Int,
++    val title: String,
++    val image: String,
++    val description:String,
++    val date :String,
++    val location:String,
++    val latitude: Double,
++    val longitude:Double
++)
+Index: app/src/main/java/com/example/happyplacesapp/activity/MainActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/happyplacesapp/activity/MainActivity.kt b/app/src/main/java/com/example/happyplacesapp/activity/MainActivity.kt
+new file mode 100644
+--- /dev/null	(date 1666170927927)
++++ b/app/src/main/java/com/example/happyplacesapp/activity/MainActivity.kt	(date 1666170927927)
+@@ -0,0 +1,18 @@
++package com.example.happyplacesapp.activity
++
++import android.content.Intent
++import androidx.appcompat.app.AppCompatActivity
++import android.os.Bundle
++import com.example.happyplacesapp.databinding.ActivityMainBinding
++
++class MainActivity : AppCompatActivity() {
++    private var binding: ActivityMainBinding? = null
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        binding = ActivityMainBinding.inflate(layoutInflater)
++        setContentView(binding?.root)
++        binding?.fabAddHappyPlace?.setOnClickListener {
++            startActivity(Intent(this@MainActivity, AddHappyPlacesActivity::class.java))
++        }
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/shape_image_view_border.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/shape_image_view_border.xml b/app/src/main/res/drawable/shape_image_view_border.xml
+new file mode 100644
+--- /dev/null	(date 1666088927590)
++++ b/app/src/main/res/drawable/shape_image_view_border.xml	(date 1666088927590)
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="rectangle">
++
++    <stroke
++        android:width="@dimen/image_border_stroke_size"
++        android:color="@color/secondary_text_color" />
++
++    <solid android:color="@color/white_color" />
++
++    <corners android:radius="@dimen/add_place_image_shape_radius" />
++</shape>
+\ No newline at end of file
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/src/main/AndroidManifest.xml	(date 1666170927924)
+@@ -1,7 +1,9 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+-
++    <uses-permission android:name="android.permission.CAMERA"/>
++    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
++    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+     <application
+         android:allowBackup="true"
+         android:dataExtractionRules="@xml/data_extraction_rules"
+@@ -13,7 +15,17 @@
+         android:theme="@style/Theme.HappyPlacesApp"
+         tools:targetApi="31">
+         <activity
+-            android:name=".MainActivity"
++            android:name=".activity.AddHappyPlacesActivity"
++            android:label="ADD HAPPY PLACE"
++            android:screenOrientation="portrait"
++            android:theme="@style/CustomNoActionBarTheme"
++            android:exported="false">
++            <meta-data
++                android:name="android.app.lib_name"
++                android:value="" />
++        </activity>
++        <activity
++            android:name=".activity.MainActivity"
+             android:exported="true">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+Index: app/build.gradle
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/build.gradle b/app/build.gradle
+--- a/app/build.gradle	(revision 7e1b738b3e5592f643ec436808e9b709e6b18ef5)
++++ b/app/build.gradle	(date 1666162485007)
+@@ -30,15 +30,20 @@
+     kotlinOptions {
+         jvmTarget = '1.8'
+     }
++    buildFeatures{
++        viewBinding true
++    }
+ }
+ 
+ dependencies {
+ 
+     implementation 'androidx.core:core-ktx:1.7.0'
+     implementation 'androidx.appcompat:appcompat:1.5.1'
+-    implementation 'com.google.android.material:material:1.6.1'
++    implementation 'com.google.android.material:material:1.0.0'
+     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+     testImplementation 'junit:junit:4.13.2'
+     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
++    //Dexter lib
++    implementation 'com.karumi:dexter:6.2.3'
+ }
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_add_happy_places.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_add_happy_places.xml b/app/src/main/res/layout/activity_add_happy_places.xml
+new file mode 100644
+--- /dev/null	(date 1666161350157)
++++ b/app/src/main/res/layout/activity_add_happy_places.xml	(date 1666161350157)
+@@ -0,0 +1,169 @@
++<?xml version="1.0" encoding="utf-8"?>
++<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent">
++
++    <androidx.appcompat.widget.Toolbar
++        android:id="@+id/toolbar_add_place"
++        android:layout_width="match_parent"
++        android:layout_height="?attr/actionBarSize"
++        android:background="@color/purple_500"
++        app:layout_constraintEnd_toEndOf="parent"
++        app:layout_constraintStart_toStartOf="parent"
++        app:layout_constraintTop_toTopOf="parent"
++        android:theme="@style/CustomToolbarStyle"/>
++
++    <ScrollView
++        android:id="@+id/sv_main"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:fillViewport="true"
++        app:layout_constraintBottom_toBottomOf="parent"
++        app:layout_constraintEnd_toEndOf="parent"
++        app:layout_constraintStart_toStartOf="parent"
++        app:layout_constraintTop_toBottomOf="@id/toolbar_add_place">
++
++        <androidx.constraintlayout.widget.ConstraintLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:padding="@dimen/main_content_padding">
++
++            <com.google.android.material.textfield.TextInputLayout
++                android:id="@+id/til_title"
++                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toTopOf="parent">
++
++                <androidx.appcompat.widget.AppCompatEditText
++                    android:id="@+id/et_title"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="@string/edit_text_hint_title"
++                    android:inputType="textCapWords"
++                    android:textColor="@color/primary_text_color"
++                    android:textColorHint="@color/secondary_text_color"
++                    android:textSize="@dimen/edit_text_text_size" />
++            </com.google.android.material.textfield.TextInputLayout>
++
++            <com.google.android.material.textfield.TextInputLayout
++                android:id="@+id/til_description"
++                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginTop="@dimen/add_screen_til_marginTop"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toBottomOf="@+id/til_title">
++
++                <androidx.appcompat.widget.AppCompatEditText
++                    android:id="@+id/et_description"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="@string/edit_text_hint_description"
++                    android:inputType="textCapSentences"
++                    android:textColor="@color/primary_text_color"
++                    android:textColorHint="@color/secondary_text_color"
++                    android:textSize="@dimen/edit_text_text_size"/>
++            </com.google.android.material.textfield.TextInputLayout>
++
++            <com.google.android.material.textfield.TextInputLayout
++                android:id="@+id/til_date"
++                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginTop="@dimen/add_screen_til_marginTop"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toBottomOf="@+id/til_description">
++
++                <androidx.appcompat.widget.AppCompatEditText
++                    android:id="@+id/et_date"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="@string/edit_text_hint_date"
++                    android:focusableInTouchMode="false"
++                    android:inputType="text"
++                    android:textColor="@color/primary_text_color"
++                    android:textColorHint="@color/secondary_text_color"
++                    android:textSize="@dimen/edit_text_text_size" />
++            </com.google.android.material.textfield.TextInputLayout>
++
++            <com.google.android.material.textfield.TextInputLayout
++                android:id="@+id/til_location"
++                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginTop="@dimen/add_screen_til_marginTop"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toBottomOf="@+id/til_date">
++
++                <androidx.appcompat.widget.AppCompatEditText
++                    android:id="@+id/et_location"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="@string/edit_text_hint_location"
++                    android:inputType="text"
++                    android:textColor="@color/primary_text_color"
++                    android:textColorHint="@color/secondary_text_color"
++                    android:textSize="@dimen/edit_text_text_size" />
++            </com.google.android.material.textfield.TextInputLayout>
++
++            <androidx.appcompat.widget.AppCompatImageView
++                android:id="@+id/iv_place_image"
++                android:layout_width="@dimen/add_screen_place_image_size"
++                android:layout_height="@dimen/add_screen_place_image_size"
++                android:layout_marginTop="@dimen/add_screen_place_image_marginTop"
++                android:background="@drawable/shape_image_view_border"
++                android:padding="@dimen/add_screen_place_image_padding"
++                android:scaleType="centerCrop"
++                android:src="@drawable/add_screen_image_placeholder"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintHorizontal_bias="0.0"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toBottomOf="@+id/til_location" />
++
++            <TextView
++                android:id="@+id/tv_add_image"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_marginTop="@dimen/add_screen_text_add_image_marginTop"
++                android:background="?attr/selectableItemBackground"
++                android:gravity="center"
++                android:padding="@dimen/add_screen_text_add_image_padding"
++                android:text="@string/text_add_image"
++                android:textColor="@color/blue"
++                android:textSize="@dimen/add_screen_text_add_image_textSize"
++                android:textStyle="bold"
++                app:layout_constraintBottom_toTopOf="@+id/btn_save"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintHorizontal_bias="0.45"
++                app:layout_constraintStart_toEndOf="@+id/iv_place_image"
++                app:layout_constraintTop_toBottomOf="@+id/til_location"
++                app:layout_constraintVertical_bias="0.019" />
++
++            <Button
++                android:id="@+id/btn_save"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_gravity="center"
++                android:layout_marginTop="@dimen/add_screen_btn_save_marginTop"
++                android:background="@drawable/shape_button_rounded"
++                android:gravity="center"
++                android:paddingTop="@dimen/add_screen_btn_save_paddingTopBottom"
++                android:paddingBottom="@dimen/add_screen_btn_save_paddingTopBottom"
++                android:text="@string/btn_text_save"
++                android:textColor="@color/white_color"
++                android:textSize="@dimen/btn_text_size"
++                app:layout_constraintEnd_toEndOf="parent"
++                app:layout_constraintStart_toStartOf="parent"
++                app:layout_constraintTop_toBottomOf="@+id/iv_place_image" />
++        </androidx.constraintlayout.widget.ConstraintLayout>
++    </ScrollView>
++    <!--END-->
++</androidx.constraintlayout.widget.ConstraintLayout>
+diff --git a/app/src/main/res/drawable-v24/add_screen_image_placeholder.png b/app/src/main/res/drawable-v24/add_screen_image_placeholder.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b6b727e318cc5a7f83763e603d74ee0b8402f11
+GIT binary patch
+literal 3225
+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
+

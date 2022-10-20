@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">HappyPlacesApp</string>
+    <string name="edit_text_hint_title">Title</string>
+    <string name="edit_text_hint_description">Description</string>
+    <string name="edit_text_hint_date">Date</string>
+    <string name="edit_text_hint_location">Location</string>
+    <string name="text_add_image">ADD IMAGE</string>
+    <string name="btn_text_save">SAVE</string>
+    <string name="note_text_no_happy_places_found_yet_kindly_add_one">No Happy Places Found Yet. Kindly add one.</string>
+    <string name="image_content_description">image</string>
+    <string name="title_activity_happy_place_detail">HappyPlaceDetailActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
 </resources>
