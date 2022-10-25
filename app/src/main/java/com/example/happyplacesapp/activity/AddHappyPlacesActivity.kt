@@ -1,6 +1,7 @@
 package com.example.happyplacesapp.activity
 
 import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.ActivityNotFoundException
@@ -43,6 +44,8 @@ class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
     private var saveImageToInternalStorage: Uri? = null
     private var mLatitude: Double = 0.0
     private var mLongitude: Double = 0.0
+    private var mHappyPlaceModel :HappyPlaceModel? = null
+
     @RequiresApi(Build.VERSION_CODES.P)
     private var openGalleryLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -69,8 +72,13 @@ class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
         if (supportActionBar != null) {
             supportActionBar?.setDisplayHomeAsUpEnabled(true)
         }
+
         binding?.toolbarAddPlace?.setNavigationOnClickListener {
             onBackPressed()
+        }
+
+        if (intent.hasExtra("EXTRA_PLACE_DETAIL")){
+            mHappyPlaceModel = intent.getParcelableExtra("EXTRA_PLACE_DETAIL")
         }
         dateSetPicker = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
             cal.set(Calendar.YEAR, year)
@@ -79,6 +87,20 @@ class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
             updateDateInView()
         }
         updateDateInView()
+
+        if (mHappyPlaceModel != null){
+            supportActionBar?.title = mHappyPlaceModel?.title
+            binding?.etTitle?.setText(mHappyPlaceModel?.title)
+            binding?.etDate?.setText(mHappyPlaceModel?.date)
+            binding?.etDescription?.setText(mHappyPlaceModel?.description)
+            binding?.etLocation?.setText(mHappyPlaceModel?.location)
+            mLongitude = mHappyPlaceModel?.longitude!!
+            mLatitude = mHappyPlaceModel?.latitude!!
+
+            saveImageToInternalStorage = Uri.parse(mHappyPlaceModel?.image)
+            binding?.ivPlaceImage?.setImageURI(saveImageToInternalStorage)
+            binding?.btnSave?.text = "Update"
+        }
         binding?.etDate?.setOnClickListener(this)
         binding?.tvAddImage?.setOnClickListener(this)
         binding?.btnSave?.setOnClickListener(this)
@@ -127,7 +149,7 @@ class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
                     else -> {
 
                         val happyPlaceModel = HappyPlaceModel(
-                            0,
+                            if (mHappyPlaceModel == null) 0 else mHappyPlaceModel!!.id,
                             binding?.etTitle?.text.toString(),
                             saveImageToInternalStorage.toString(),
                             binding?.etDescription?.text.toString(),
@@ -139,12 +161,22 @@ class AddHappyPlacesActivity : AppCompatActivity(), View.OnClickListener {
 
                         val dbHandler = DatabaseHandler(this)
 
-                        val addHappyPlace = dbHandler.addHappyPlace(happyPlaceModel)
+                        val intent = Intent()
+                        if (mHappyPlaceModel == null) {
+                            val addHappyPlace = dbHandler.addHappyPlace(happyPlaceModel)
 
-                        if (addHappyPlace > 0) {
-                            val intent = Intent()
-                            setResult(RESULT_OK,intent)
-                            finish()
+                            if (addHappyPlace > 0) {
+
+                                setResult(Activity.RESULT_OK,intent)
+                                finish()//finishing activity
+                            }
+                        } else {
+                            val updateHappyPlace = dbHandler.updateHappyPlace(happyPlaceModel)
+
+                            if (updateHappyPlace > 0) {
+                                setResult(Activity.RESULT_OK,intent)
+                                finish()//finishing activity
+                            }
                         }
                     }
                 }

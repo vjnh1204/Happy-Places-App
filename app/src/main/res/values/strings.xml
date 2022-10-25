@@ -9,12 +9,7 @@
     <string name="note_text_no_happy_places_found_yet_kindly_add_one">No Happy Places Found Yet. Kindly add one.</string>
     <string name="image_content_description">image</string>
     <string name="title_activity_happy_place_detail">HappyPlaceDetailActivity</string>
-    <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
+    <string name="title_activity_maps">MapsActivity</string>
 
-    <string name="hello_first_fragment">Hello first fragment</string>
-    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+
 </resources>
